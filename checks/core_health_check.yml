@@ -49,12 +49,30 @@
       register: clp_agent_service_status_direct
       ignore_errors: yes # Don't fail the playbook if service check fails
 
-    # Check Tailscale service directly
-    - name: Check Tailscale service status
+    # --- TAILSCALE CHECKS (Collecting Data) ---
+    - name: --- TAILSCALE CHECKS (Collecting Data) ---
+      ansible.builtin.debug:
+        msg: "Collecting Tailscale status..."
+
+    - name: Check if Tailscale is installed
+      ansible.builtin.command: dpkg -s tailscale
+      register: tailscale_installed_check
+      changed_when: false
+      ignore_errors: yes # This will fail if tailscale is not installed, which is expected
+
+    - name: Check Tailscale service status (if installed)
       ansible.builtin.service:
         name: tailscale
       register: tailscale_service_status_direct
-      ignore_errors: yes # Don't fail the playbook if service check fails
+      when: tailscale_installed_check.rc == 0 # Only run if Tailscale is installed
+      ignore_errors: yes # Service might be installed but inactive
+
+    - name: Get Tailscale detailed status (if installed)
+      ansible.builtin.command: tailscale status
+      register: tailscale_details
+      changed_when: false
+      when: tailscale_installed_check.rc == 0 # Only run if Tailscale is installed
+      ignore_errors: yes # tailscale status command might fail if not fully configured/running
 
     - name: Check Nginx configuration syntax
       ansible.builtin.command: nginx -t
@@ -124,9 +142,20 @@
 
           --- CLOUDPANEL STATUS ---
           Service Status: {{ 'running' if (clp_agent_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
-
-          --- TAILSCAILE STATUS ---
-          Service Status: {{ 'running' if (tailscale_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
+          
+          --- TAILSCALE STATUS ---
+          {% if tailscale_installed_check.rc == 0 %}
+          Installation: YES
+          Service Status: {{ 'running' if (tailscale_service_status_direct is defined and tailscale_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
+          Details:
+          {% if tailscale_details.stdout is defined and tailscale_details.stdout | length > 0 %}
+          {{ tailscale_details.stdout }}
+          {% else %}
+          (No detailed status available or command failed)
+          {% endif %}
+          {% else %}
+          Installation: NO (Tailscale is not installed)
+          {% endif %}
 
           =============================================
           CHECK COMPLETE. Review above for any issues.
