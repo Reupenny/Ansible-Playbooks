@@ -81,7 +81,7 @@
 
     - name: --- CLOUDPANEL CHECKS ---
       ansible.builtin.debug:
-        msg: "Starting CloudPanel checks..."
+        msg: "Starting CloudPanel(clp-agent) checks..."
 
     - name: Display CloudPanel service status
       ansible.builtin.debug:
