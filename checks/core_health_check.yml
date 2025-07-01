@@ -87,10 +87,10 @@
       ansible.builtin.debug:
         msg: >-
           CloudPanel service status: {{
-            'running' if (ansible_facts.services['cloudpanel'] is defined and ansible_facts.services['cloudpanel'].state == 'running')
+            'running' if (ansible_facts.services['clp-agent'] is defined and ansible_facts.services['clp-agent'].state == 'running')
             else 'NOT RUNNING'
           }}
-      failed_when: ansible_facts.services['cloudpanel'].state != 'running'
+      failed_when: ansible_facts.services['clp-agent'].state != 'running'
       ignore_errors: yes
 
     - name: --- LOG FILE ANALYSIS (LAST {{ log_check_lines }} LINES) ---
