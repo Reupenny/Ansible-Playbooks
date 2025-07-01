@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Base directory for GoAccess reports
+REPORT_BASE_DIR="{{ goaccess_report_base_dir }}"
+
+# Find all CloudPanel access logs
+# CloudPanel typically stores logs in /home/cloudpanel/htdocs/<domain>/logs/access.log
+find /home/cloudpanel/htdocs -maxdepth 3 -path "*/logs/access.log" | while read -r LOG_FILE; do
+    # Extract the domain name from the path
+    # Example: /home/cloudpanel/htdocs/yourdomain.com/logs/access.log -> yourdomain.com
+    DOMAIN=$(basename "$(dirname "$(dirname "$LOG_FILE")")")
+
+    # Create report directory for this domain
+    DOMAIN_REPORT_DIR="${REPORT_BASE_DIR}/${DOMAIN}"
+    mkdir -p "${DOMAIN_REPORT_DIR}"
+
+    echo "Generating GoAccess report for ${DOMAIN} from ${LOG_FILE}..."
+
+    # Run GoAccess
+    # Assuming Nginx combined log format used by CloudPanel
+    goaccess "${LOG_FILE}" \
+             --log-format=COMBINED \
+             --date-format=%d/%b/%Y \
+             --time-format=%H:%M:%S \
+             --output="${DOMAIN_REPORT_DIR}/index.html" \
+             --real-time-html \
+             --html-ref=yes \
+             --html-unit=Mbytes \
+             --no-global-config # Use command line options only
+
+    # Optional: You can create a symlink to the latest report if needed
+    # rm -f "${REPORT_BASE_DIR}/${DOMAIN}_latest.html"
+    # ln -s "${DOMAIN_REPORT_DIR}/index.html" "${REPORT_BASE_DIR}/${DOMAIN}_latest.html"
+
+done
+
+# Optional: Generate a main index page for all reports
+# This creates a simple HTML file at /var/www/html/goaccess_reports/index.html
+# that lists all your domains with links to their GoAccess reports.
+echo "Generating main index page..."
+echo "<html><head><title>CloudPanel GoAccess Reports</title>" > "${REPORT_BASE_DIR}/index.html"
+echo "<style>body{font-family:sans-serif;} ul{list-style:none;padding:0;} li{margin-bottom:10px;}</style>" >> "${REPORT_BASE_DIR}/index.html"
+echo "</head><body><h1>CloudPanel GoAccess Reports</h1><ul>" >> "${REPORT_BASE_DIR}/index.html"
+# Find all domain report directories and create links
+find "${REPORT_BASE_DIR}" -maxdepth 1 -mindepth 1 -type d -not -name "index.html" -printf "<li><a href='./%f/'>%f</a></li>\n" | sort >> "${REPORT_BASE_DIR}/index.html"
+echo "</ul></body></html>" >> "${REPORT_BASE_DIR}/index.html"

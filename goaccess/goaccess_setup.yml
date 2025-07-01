@@ -1,0 +1,53 @@
+# goaccess_setup.yml
+name: Setup GoAccess for CloudPanel logs
+hosts: vultr_servers
+become: yes # Run tasks with sudo/root privileges
+vars:
+goaccess_report_base_dir: /var/www/html/goaccess_reports
+nginx_conf_path: /etc/nginx/sites-available/goaccess_stats.conf
+nginx_symlink_path: /etc/nginx/sites-enabled/goaccess_stats.conf
+
+stats_subdomain: "stats.azurestudio.com" # <<< CHANGE THIS to your actual subdomain
+tasks:
+name: Update apt cache
+ansible.builtin.apt:
+update_cache: yes
+name: Install GoAccess
+ansible.builtin.apt:
+name: goaccess
+state: present
+name: Create base directory for GoAccess reports
+ansible.builtin.file:
+path: "{{ goaccess_report_base_dir }}"
+state: directory
+mode: '0755'
+owner: www-data # CloudPanel Nginx usually runs as www-data
+group: www-data
+name: Create shell script to generate GoAccess reports per site
+ansible.builtin.template:
+src: templates/generate_goaccess_reports.sh.j2
+dest: /usr/local/bin/generate_goaccess_reports.sh
+mode: '0755'
+name: Add cron job to run GoAccess report generation script hourly
+ansible.builtin.cron:
+name: "Generate GoAccess reports"
+minute: "0" # Every hour at minute 0
+job: "/usr/local/bin/generate_goaccess_reports.sh > /dev/null 2>&1"
+user: root # The script needs root access to find all logs
+name: Configure Nginx for GoAccess reports
+ansible.builtin.template:
+src: templates/nginx_goaccess.conf.j2
+dest: "{{ nginx_conf_path }}"
+notify: Reload Nginx
+name: Ensure Nginx config is enabled
+ansible.builtin.file:
+src: "{{ nginx_conf_path }}"
+dest: "{{ nginx_symlink_path }}"
+state: link
+notify: Reload Nginx
+handlers:
+name: Reload Nginx
+ansible.builtin.service:
+name: nginx
+state: reloaded
+listen: "Reload Nginx"

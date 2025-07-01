@@ -1,0 +1,41 @@
+# nginx_goaccess.conf.j2
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ stats_subdomain }}; # Your chosen subdomain, e.g., stats.yourdomain.com
+
+    root {{ goaccess_report_base_dir }};
+    index index.html;
+
+    access_log off; # Don't log access to the stats page itself to avoid infinite loops
+    error_log /var/log/nginx/goaccess_stats_error.log warn;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # --- OPTIONAL: Basic HTTP Authentication ---
+    # Uncomment the following lines to add a username/password to access the stats.
+    # You'll need to create the .htpasswd file manually on the server or via Ansible.
+    # auth_basic "GoAccess Stats";
+    # auth_basic_user_file /etc/nginx/.htpasswd;
+
+    # To create the .htpasswd file on your server (after running the playbook):
+    # sudo apt install apache2-utils # if htpasswd isn't available
+    # sudo htpasswd -c /etc/nginx/.htpasswd yourusername
+    # Enter your desired password when prompted.
+
+    # --- OPTIONAL: Redirect HTTP to HTTPS ---
+    # If you want to secure your stats page with SSL (recommended),
+    # uncomment and configure these lines after obtaining an SSL certificate
+    # (e.g., via Certbot/Let's Encrypt for stats.yourdomain.com).
+    # You'd run Certbot *after* this Nginx config is in place and working on HTTP.
+    # listen 443 ssl;
+    # ssl_certificate /etc/letsencrypt/live/{{ stats_subdomain }}/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/{{ stats_subdomain }}/privkey.pem;
+    # include /etc/letsencrypt/options-ssl-nginx.conf; # Common Certbot config
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # Common Certbot config
+
+    # If you redirect HTTP to HTTPS, add this:
+    # return 301 https://$host$request_uri;
+}
