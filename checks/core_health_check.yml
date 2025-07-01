@@ -148,7 +148,7 @@
           {% if tailscale_installed_check.rc == 0 %}
           Installation: YES
           Service Status: {{ 'running' if (tailscale_is_active.rc == 0) else 'NOT RUNNING' }}
-          {% if tailscale_local_ip.stdout is defined and tailscale_local_ip.stdout | length > 0 %}
+          {% if tailscale_local_ip.stdout is defined %}
           Local IP: {{ tailscale_local_ip.stdout | trim }}
           {% else %}
           Local IP: (Not available or command failed)
