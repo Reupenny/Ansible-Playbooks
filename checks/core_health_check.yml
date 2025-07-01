@@ -60,19 +60,20 @@
       changed_when: false
       ignore_errors: yes # This will fail if tailscale is not installed, which is expected
 
-    - name: Check Tailscale service status (if installed)
-      ansible.builtin.service:
-        name: tailscale
-      register: tailscale_service_status_direct
-      when: tailscale_installed_check.rc == 0 # Only run if Tailscale is installed
-      ignore_errors: yes # Service might be installed but inactive
-
-    - name: Get Tailscale detailed status (if installed)
-      ansible.builtin.command: tailscale status
-      register: tailscale_details
+    - name: Get Tailscale service status (if installed)
+      ansible.builtin.command: systemctl is-active tailscale
+      register: tailscale_is_active
       changed_when: false
+      failed_when: false # Always succeed, check rc later
       when: tailscale_installed_check.rc == 0 # Only run if Tailscale is installed
-      ignore_errors: yes # tailscale status command might fail if not fully configured/running
+      ignore_errors: yes # Ensure the playbook continues
+
+    - name: Get Tailscale local IPv4 address (if installed)
+      ansible.builtin.command: tailscale ip -4
+      register: tailscale_local_ip
+      changed_when: false
+      when: tailscale_installed_check.rc == 0 and tailscale_is_active.rc == 0 # Only if installed and active
+      ignore_errors: yes # Command might fail if not fully configured/running
 
     - name: Check Nginx configuration syntax
       ansible.builtin.command: nginx -t
@@ -146,12 +147,11 @@
           --- TAILSCALE STATUS ---
           {% if tailscale_installed_check.rc == 0 %}
           Installation: YES
-          Service Status: {{ 'running' if (tailscale_service_status_direct is defined and tailscale_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
-          Details:
-          {% if tailscale_details.stdout is defined and tailscale_details.stdout | length > 0 %}
-          {{ tailscale_details.stdout }}
+          Service Status: {{ 'running' if (tailscale_is_active.rc == 0) else 'NOT RUNNING' }}
+          {% if tailscale_local_ip.stdout is defined and tailscale_local_ip.stdout | length > 0 %}
+          Local IP: {{ tailscale_local_ip.stdout | trim }}
           {% else %}
-          (No detailed status available or command failed)
+          Local IP: (Not available or command failed)
           {% endif %}
           {% else %}
           Installation: NO (Tailscale is not installed)
