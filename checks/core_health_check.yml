@@ -42,11 +42,18 @@
       register: nginx_service_status_direct
       ignore_errors: yes # Don't fail the playbook if service check fails
 
-    # Check CloudPanel (clp-agent) service directly
-    - name: Check CloudPanel (clp-agent) service status
+    # Check CloudPanel service directly
+    - name: Check CloudPanel service status
       ansible.builtin.service:
         name: clp-agent
       register: clp_agent_service_status_direct
+      ignore_errors: yes # Don't fail the playbook if service check fails
+
+    # Check Tailscale service directly
+    - name: Check Tailscale service status
+      ansible.builtin.service:
+        name: tailscale
+      register: tailscale_service_status_direct
       ignore_errors: yes # Don't fail the playbook if service check fails
 
     - name: Check Nginx configuration syntax
@@ -115,8 +122,11 @@
           Service Status: {{ 'running' if (nginx_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
           Config Test: {{ 'OK' if 'test is successful' in nginx_config_test.stderr else 'ERROR - Check stderr for details: ' + nginx_config_test.stderr }}
 
-          --- CLOUDPANEL (clp-agent) STATUS ---
+          --- CLOUDPANEL STATUS ---
           Service Status: {{ 'running' if (clp_agent_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
+
+          --- TAILSCAILE STATUS ---
+          Service Status: {{ 'running' if (tailscale_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
 
           =============================================
           CHECK COMPLETE. Review above for any issues.
