@@ -33,18 +33,21 @@
 
     - name: --- SERVICE CHECKS (Collecting Data) ---
       ansible.builtin.debug:
-        msg: "Gathering service status facts..."
+        msg: "Gathering specific service status..."
 
-    - name: Gather service facts
-      ansible.builtin.service_facts:
+    # Check Nginx service directly
+    - name: Check Nginx service status
+      ansible.builtin.service:
+        name: nginx
+      register: nginx_service_status_direct
+      ignore_errors: yes # Don't fail the playbook if service check fails
 
-    # --- DEBUGGING STEP: INSPECT CLOUDPANEL SERVICE FACT ---
-    - name: DEBUG Display raw ansible_facts.services for clp-agent
-      ansible.builtin.debug:
-        var: ansible_facts.services['clp-agent']
-      when: ansible_facts.services['clp-agent'] is defined
-      # This task will show us exactly what Ansible sees for the clp-agent service.
-      # Look for the 'state' key, or any other key indicating its running status.
+    # Check CloudPanel (clp-agent) service directly
+    - name: Check CloudPanel (clp-agent) service status
+      ansible.builtin.service:
+        name: clp-agent
+      register: clp_agent_service_status_direct
+      ignore_errors: yes # Don't fail the playbook if service check fails
 
     - name: Check Nginx configuration syntax
       ansible.builtin.command: nginx -t
@@ -69,7 +72,7 @@
         msg: >-
           Nginx Error Log Warnings/Errors (last {{ log_check_lines }} lines):
           {{ nginx_log_errors.stdout if nginx_log_errors.stdout else 'No errors/warnings found or log not accessible.' }}
-      when: nginx_log_errors.stdout is defined and nginx_log_errors.stdout | length > 0 # Ensure it's not just an empty string
+      when: nginx_log_errors.stdout is defined and nginx_log_errors.stdout | length > 0
 
     - name: Check system syslog for recent errors/warnings
       ansible.builtin.shell: |
@@ -89,7 +92,7 @@
         msg: >-
           System Syslog Warnings/Errors (last {{ log_check_lines }} lines):
           {{ syslog_errors.stdout if syslog_errors.stdout else 'No errors/warnings found or log not accessible.' }}
-      when: syslog_errors.stdout is defined and syslog_errors.stdout | length > 0 # Ensure it's not just an empty string
+      when: syslog_errors.stdout is defined and syslog_errors.stdout | length > 0
 
     # --- CONSOLIDATED HEALTH REPORT (Displaying at the End) ---
     - name: --- CONSOLIDATED HEALTH REPORT ---
@@ -109,11 +112,11 @@
           {{ uptime_output.stdout }}
 
           --- NGINX STATUS ---
-          Service Status: {{ 'running' if (ansible_facts.services['nginx'] is defined and ansible_facts.services['nginx'].state == 'running') else 'NOT RUNNING' }}
+          Service Status: {{ 'running' if (nginx_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
           Config Test: {{ 'OK' if 'test is successful' in nginx_config_test.stderr else 'ERROR - Check stderr for details: ' + nginx_config_test.stderr }}
 
           --- CLOUDPANEL (clp-agent) STATUS ---
-          Service Status: {{ 'running' if (ansible_facts.services['clp-agent'] is defined and ansible_facts.services['clp-agent'].state == 'running') else 'NOT RUNNING' }}
+          Service Status: {{ 'running' if (clp_agent_service_status_direct.status.ActiveState == 'active') else 'NOT RUNNING' }}
 
           =============================================
           CHECK COMPLETE. Review above for any issues.
