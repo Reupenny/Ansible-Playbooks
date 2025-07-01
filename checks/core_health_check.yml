@@ -72,7 +72,7 @@
       ansible.builtin.command: tailscale ip -4
       register: tailscale_local_ip
       changed_when: false
-      when: tailscale_installed_check.rc == 0 and tailscale_is_active.rc == 0 # Only if installed and active
+      when: tailscale_installed_check.rc == 0 # Only run if Tailscale is installed
       ignore_errors: yes # Command might fail if not fully configured/running
 
     - name: Check Nginx configuration syntax
