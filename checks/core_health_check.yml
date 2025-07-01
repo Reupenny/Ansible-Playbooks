@@ -12,57 +12,31 @@
       ansible.builtin.debug:
         msg: "Running on {{ inventory_hostname }}"
 
-    - name: --- SYSTEM HEALTH CHECKS ---
+    - name: --- SYSTEM HEALTH CHECKS (Collecting Data) ---
       ansible.builtin.debug:
-        msg: "Starting system health checks..."
+        msg: "Collecting system health data..."
 
     - name: Check disk space usage
       ansible.builtin.command: df -h /
       register: df_output
       changed_when: false
 
-    - name: Display disk space
-      ansible.builtin.debug:
-        msg: "Disk Usage:\n{{ df_output.stdout }}"
-
     - name: Check memory usage
       ansible.builtin.command: free -h
       register: free_output
       changed_when: false
-
-    - name: Display memory usage
-      ansible.builtin.debug:
-        msg: "Memory Usage:\n{{ free_output.stdout }}"
 
     - name: Check system uptime and load average
       ansible.builtin.command: uptime
       register: uptime_output
       changed_when: false
 
-    - name: Display uptime and load average
+    - name: --- SERVICE CHECKS (Collecting Data) ---
       ansible.builtin.debug:
-        msg: "Uptime and Load Average:\n{{ uptime_output.stdout }}"
-
-    - name: --- SERVICE CHECKS ---
-      ansible.builtin.debug:
-        msg: "Gathering service status..."
+        msg: "Gathering service status facts..."
 
     - name: Gather service facts
       ansible.builtin.service_facts:
-
-    - name: --- NGINX CHECKS ---
-      ansible.builtin.debug:
-        msg: "Starting Nginx checks..."
-
-    - name: Display Nginx service status
-      ansible.builtin.debug:
-        msg: >-
-          Nginx service status: {{
-            'running' if (ansible_facts.services['nginx'] is defined and ansible_facts.services['nginx'].state == 'running')
-            else 'NOT RUNNING'
-          }}
-      failed_when: ansible_facts.services['nginx'].state != 'running'
-      ignore_errors: yes
 
     - name: Check Nginx configuration syntax
       ansible.builtin.command: nginx -t
@@ -71,31 +45,10 @@
       failed_when: "'test failed' in nginx_config_test.stderr"
       ignore_errors: yes
 
-    - name: Display Nginx configuration test result
-      ansible.builtin.debug:
-        msg: >-
-          Nginx config test: {{
-            'OK' if 'test is successful' in nginx_config_test.stderr
-            else 'ERROR - Check stderr for details: ' + nginx_config_test.stderr
-          }}
-
-    - name: --- CLOUDPANEL CHECKS ---
-      ansible.builtin.debug:
-        msg: "Starting CloudPanel(clp-agent) checks..."
-
-    - name: Display CloudPanel service status
-      ansible.builtin.debug:
-        msg: >-
-          CloudPanel service status: {{
-            'running' if (ansible_facts.services['clp-agent'] is defined and ansible_facts.services['clp-agent'].state == 'running')
-            else 'NOT RUNNING'
-          }}
-      failed_when: ansible_facts.services['clp-agent'].state != 'running'
-      ignore_errors: yes
-
+    # --- LOG FILE ANALYSIS (Displaying Immediately as Requested) ---
     - name: --- LOG FILE ANALYSIS (LAST {{ log_check_lines }} LINES) ---
       ansible.builtin.debug:
-        msg: "Scanning recent log files for errors/warnings..."
+        msg: "Scanning recent log files for errors/warnings (Output below):"
 
     - name: Check Nginx error log for recent errors/warnings
       ansible.builtin.shell: tail -n {{ log_check_lines }} /var/log/nginx/error.log | grep -iE "error|warn|crit|fail" || true
@@ -106,11 +59,9 @@
     - name: Display Nginx error log findings
       ansible.builtin.debug:
         msg: >-
-          Nginx Error Log Warnings/Errors (last {{ log_check_lines }} lines):\n{{
-            nginx_log_errors.stdout if nginx_log_errors.stdout
-            else 'No errors/warnings found or log not accessible.'
-          }}
-      when: nginx_log_errors.stdout is defined and nginx_log_errors.stdout
+          Nginx Error Log Warnings/Errors (last {{ log_check_lines }} lines):
+          {{ nginx_log_errors.stdout if nginx_log_errors.stdout else 'No errors/warnings found or log not accessible.' }}
+      when: nginx_log_errors.stdout is defined # This 'when' ensures the task only runs if output exists
 
     - name: Check system syslog for recent errors/warnings
       ansible.builtin.shell: |
@@ -128,12 +79,34 @@
     - name: Display Syslog findings
       ansible.builtin.debug:
         msg: >-
-          System Syslog Warnings/Errors (last {{ log_check_lines }} lines):\n{{
-            syslog_errors.stdout if syslog_errors.stdout
-            else 'No errors/warnings found or log not accessible.'
-          }}
-      when: syslog_errors.stdout is defined and syslog_errors.stdout
+          System Syslog Warnings/Errors (last {{ log_check_lines }} lines):
+          {{ syslog_errors.stdout if syslog_errors.stdout else 'No errors/warnings found or log not accessible.' }}
+      when: syslog_errors.stdout is defined # This 'when' ensures the task only runs if output exists
 
-    - name: --- CHECK COMPLETE ---
+    # --- CONSOLIDATED HEALTH REPORT (Displaying at the End) ---
+    - name: --- CONSOLIDATED HEALTH REPORT ---
       ansible.builtin.debug:
-        msg: "Core server and CloudPanel health check completed. Review output above for any 'FAILED' or 'ERROR' messages."
+        msg: |
+          =============================================
+          SERVER HEALTH SUMMARY FOR {{ inventory_hostname }}
+          =============================================
+
+          --- DISK USAGE ---
+          {{ df_output.stdout }}
+
+          --- MEMORY USAGE ---
+          {{ free_output.stdout }}
+
+          --- UPTIME & LOAD AVERAGE ---
+          {{ uptime_output.stdout }}
+
+          --- NGINX STATUS ---
+          Service Status: {{ 'running' if (ansible_facts.services['nginx'] is defined and ansible_facts.services['nginx'].state == 'running') else 'NOT RUNNING' }}
+          Config Test: {{ 'OK' if 'test is successful' in nginx_config_test.stderr else 'ERROR - Check stderr for details: ' + nginx_config_test.stderr }}
+
+          --- CLOUDPANEL (clp-agent) STATUS ---
+          Service Status: {{ 'running' if (ansible_facts.services['clp-agent'] is defined and ansible_facts.services['clp-agent'].state == 'running') else 'NOT RUNNING' }}
+
+          =============================================
+          CHECK COMPLETE. Review above for any issues.
+          =============================================
