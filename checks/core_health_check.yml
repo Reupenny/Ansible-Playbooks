@@ -61,7 +61,7 @@
       ignore_errors: yes # This will fail if tailscale is not installed, which is expected
 
     - name: Get Tailscale service status (if installed)
-      ansible.builtin.command: systemctl is-active tailscale
+      ansible.builtin.command: systemctl is-active tailscaled
       register: tailscale_is_active
       changed_when: false
       failed_when: false # Always succeed, check rc later
