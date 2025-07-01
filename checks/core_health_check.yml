@@ -38,6 +38,14 @@
     - name: Gather service facts
       ansible.builtin.service_facts:
 
+    # --- DEBUGGING STEP: INSPECT CLOUDPANEL SERVICE FACT ---
+    - name: DEBUG: Display raw ansible_facts.services for clp-agent
+      ansible.builtin.debug:
+        var: ansible_facts.services['clp-agent']
+      when: ansible_facts.services['clp-agent'] is defined
+      # This task will show us exactly what Ansible sees for the clp-agent service.
+      # Look for the 'state' key, or any other key indicating its running status.
+
     - name: Check Nginx configuration syntax
       ansible.builtin.command: nginx -t
       register: nginx_config_test
@@ -61,7 +69,7 @@
         msg: >-
           Nginx Error Log Warnings/Errors (last {{ log_check_lines }} lines):
           {{ nginx_log_errors.stdout if nginx_log_errors.stdout else 'No errors/warnings found or log not accessible.' }}
-      when: nginx_log_errors.stdout is defined # This 'when' ensures the task only runs if output exists
+      when: nginx_log_errors.stdout is defined and nginx_log_errors.stdout | length > 0 # Ensure it's not just an empty string
 
     - name: Check system syslog for recent errors/warnings
       ansible.builtin.shell: |
@@ -81,7 +89,7 @@
         msg: >-
           System Syslog Warnings/Errors (last {{ log_check_lines }} lines):
           {{ syslog_errors.stdout if syslog_errors.stdout else 'No errors/warnings found or log not accessible.' }}
-      when: syslog_errors.stdout is defined # This 'when' ensures the task only runs if output exists
+      when: syslog_errors.stdout is defined and syslog_errors.stdout | length > 0 # Ensure it's not just an empty string
 
     # --- CONSOLIDATED HEALTH REPORT (Displaying at the End) ---
     - name: --- CONSOLIDATED HEALTH REPORT ---
