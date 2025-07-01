@@ -39,7 +39,7 @@
       ansible.builtin.service_facts:
 
     # --- DEBUGGING STEP: INSPECT CLOUDPANEL SERVICE FACT ---
-    - name: DEBUG: Display raw ansible_facts.services for clp-agent
+    - name: DEBUG Display raw ansible_facts.services for clp-agent
       ansible.builtin.debug:
         var: ansible_facts.services['clp-agent']
       when: ansible_facts.services['clp-agent'] is defined
