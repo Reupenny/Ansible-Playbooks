@@ -1,13 +1,13 @@
-# ping.yml
+# update.yml
 ---
-- name: Ping Google.com from Vultr server
+- name: Update server
   hosts: vultr_servers
-  become: false
+  become: true
 
   tasks:
-    - name: Execute ICMP ping to 8.8.8.8 (4 packets)
-      ansible.builtin.command: ping -c 4 8.8.8.8
-      register: ping_result # Store the output of the command in 'ping_result' variable
+    - name: Update the system
+      ansible.builtin.command: apt update
+      register: update_result # Store the output of the command in 'ping_result' variable
       changed_when: false   # This task doesn't change the system, so mark as 'ok' instead of 'changed'
       failed_when: ping_result.rc != 0 # Explicitly fail if ping command returns a non-zero exit code
 
