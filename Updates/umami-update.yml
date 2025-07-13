@@ -11,6 +11,6 @@
         chdir: /etc/docker/umami/
 
     - name: Recreate Umami containers
-      ansible.builtin.shell: docker-compose up --force-recreate -d
+      ansible.builtin.shell: docker-compose up -d
       args:
         chdir: /etc/docker/umami/
