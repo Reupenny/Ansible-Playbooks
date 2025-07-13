@@ -6,11 +6,11 @@
 
   tasks:
     - name: Pull new Umami Docker images
-      ansible.builtin.shell: docker compose pull
+      ansible.builtin.shell: docker-compose pull
       args:
         chdir: /etc/docker/umami/
 
     - name: Recreate Umami containers
-      ansible.builtin.shell: docker compose up --force-recreate -d
+      ansible.builtin.shell: docker-compose up --force-recreate -d
       args:
         chdir: /etc/docker/umami/
