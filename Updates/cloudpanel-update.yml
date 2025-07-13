@@ -1,0 +1,9 @@
+# cloudpanel-update.yml
+---
+- name: Update CloudPanel
+  hosts: vultr_servers
+  become: true
+
+  tasks:
+    - name: Run CloudPanel update
+      ansible.builtin.shell: clp-update
