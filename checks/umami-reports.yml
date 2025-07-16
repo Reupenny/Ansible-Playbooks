@@ -1,0 +1,13 @@
+# umami-reports.yml
+---
+- name: Umami Reports
+  hosts: vultr_servers
+  become: true
+
+  tasks:
+    - name: Create & send reports
+      ansible.builtin.command: umami-alerts >> /home/azurestudio-umami/logs/umami-alerts.log 2>&1
+      args:
+        chdir: /home/azurestudio-umami/htdocs/umami.azurestudio.co.nz/umami-reports/umami-alerts/target/release/
+
+
